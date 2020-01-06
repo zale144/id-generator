@@ -2,7 +2,6 @@ package provider
 
 import (
 	"errors"
-	"github.com/go-redis/redis"
 	"github.com/samuel/go-zookeeper/zk"
 	"log"
 	"time"
@@ -62,7 +61,7 @@ func (r *ZooKeeperIDProvider) SetData(data, category string, version int32) erro
 func (r *ZooKeeperIDProvider) GetData(category string) (string, int32, error) {
 	result, stat, err := r.client.Get("/" + category)
 	if err != nil {
-		return "", -1, map[bool]error{true: err}[err != redis.Nil]
+		return "", -1, map[bool]error{true: err}[err != nil]
 	}
 	return string(result), stat.Version, nil
 }

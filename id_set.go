@@ -1,14 +1,10 @@
-package domain
+package id_generator
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-)
-
-const (
-	OperationIdCategory = "ewa_operation_uid"
 )
 
 type idSet struct {

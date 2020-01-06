@@ -1,13 +1,12 @@
 // +build !race
 
-package generator
+package id_generator
 
 import (
 	"fmt"
 	"testing"
 
-	"git.fxclub.org/wallet/id-generator/domain"
-	"git.fxclub.org/wallet/id-generator/provider"
+	"github.com/zale144/id-generator/provider"
 )
 
 func Test_idGenerator_TakeIDsWithRetry(t *testing.T) {
@@ -17,38 +16,38 @@ func Test_idGenerator_TakeIDsWithRetry(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         args
-		wantTakenIDs *domain.IDSet
-		wantState    *domain.IDSet
+		wantTakenIDs *IDSet
+		wantState    *IDSet
 		wantErr      bool
 	}{
 		{
 			name: "TAKE_FIRST_100_IDS",
 			args: args{
-				category: domain.OperationIdCategory,
+				category: OperationIdCategory,
 			},
-			wantTakenIDs: domain.NewIDSet([]domain.IDRange{
-				domain.NewIDRange(1, DefaultIDSetSize, false),
-			}, domain.OperationIdCategory, false),
-			wantState: domain.NewIDSet([]domain.IDRange{
-				domain.NewIDRange(DefaultIDSetSize + 1, defaultTotalSize, false),
-			}, domain.OperationIdCategory, false),
+			wantTakenIDs: NewIDSet([]IDRange{
+				NewIDRange(1, DefaultIDSetSize, false),
+			}, OperationIdCategory, false),
+			wantState: NewIDSet([]IDRange{
+				NewIDRange(DefaultIDSetSize+1, defaultTotalSize, false),
+			}, OperationIdCategory, false),
 		},
 		{
 			name: "TAKE_NEXT_100_IDS",
 			args: args{
-				category: domain.OperationIdCategory,
+				category: OperationIdCategory,
 			},
-			wantTakenIDs: domain.NewIDSet([]domain.IDRange{
-				domain.NewIDRange(DefaultIDSetSize + 1, DefaultIDSetSize * 2, false),
-			}, domain.OperationIdCategory, false),
-			wantState: domain.NewIDSet([]domain.IDRange{
-				domain.NewIDRange(DefaultIDSetSize * 2 + 1, defaultTotalSize, false),
-			}, domain.OperationIdCategory, false),
+			wantTakenIDs: NewIDSet([]IDRange{
+				NewIDRange(DefaultIDSetSize+1, DefaultIDSetSize*2, false),
+			}, OperationIdCategory, false),
+			wantState: NewIDSet([]IDRange{
+				NewIDRange(DefaultIDSetSize*2+1, defaultTotalSize, false),
+			}, OperationIdCategory, false),
 		},
 	}
 	idP := provider.NewMockIDProvider()
 	g := NewIDGenerator(idP)
-	if err := g.Initialize(domain.OperationIdCategory, 1); err != nil {
+	if err := g.Initialize(OperationIdCategory, 1); err != nil {
 		t.Errorf("generator.Initialize() error = %v", err)
 		return
 	}
@@ -68,7 +67,7 @@ func Test_idGenerator_TakeIDsWithRetry(t *testing.T) {
 			if taken != want {
 				t.Errorf("IDGenerator.TakeIDsWithRetry() = %v, want %v", taken, want)
 			}
-			s, err := g.PeekIDs(domain.OperationIdCategory)
+			s, err := g.PeekIDs(OperationIdCategory)
 			if err != nil {
 				t.Errorf("IDGenerator.TakeIDsWithRetry() error = %v", err)
 				return
@@ -79,7 +78,7 @@ func Test_idGenerator_TakeIDsWithRetry(t *testing.T) {
 				t.Errorf("IDGenerator.TakeIDsWithRetry() = %v, wantState %v", state, wantState)
 			}
 			t.Log(gotTakenIDs.String())
-			set, _ := g.PeekIDs(domain.OperationIdCategory)
+			set, _ := g.PeekIDs(OperationIdCategory)
 			t.Log(set.String())
 		})
 	}
@@ -96,7 +95,7 @@ func Test_idGenerator_PeekIDs(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *domain.IDSet
+		want    *IDSet
 		wantErr bool
 	}{
 		{
@@ -105,18 +104,18 @@ func Test_idGenerator_PeekIDs(t *testing.T) {
 				idProvider: provider.NewMockIDProvider(),
 			},
 			args: args{
-				category: domain.OperationIdCategory,
+				category: OperationIdCategory,
 			},
-			want: domain.NewIDSet([]domain.IDRange{
-				domain.NewIDRange(1, defaultTotalSize, false),
-			}, domain.OperationIdCategory, false),
+			want: NewIDSet([]IDRange{
+				NewIDRange(1, defaultTotalSize, false),
+			}, OperationIdCategory, false),
 		},
 	}
 
 	for _, tt := range tests {
 		idP := provider.NewMockIDProvider()
 		g := NewIDGenerator(idP)
-		if err := g.Initialize(domain.OperationIdCategory, 1); err != nil {
+		if err := g.Initialize(OperationIdCategory, 1); err != nil {
 			t.Errorf("IDGenerator.Initialize() error = %v", err)
 			return
 		}
@@ -140,11 +139,11 @@ func Test_idGenerator_PeekIDs(t *testing.T) {
 }
 
 func Test_idGenerator_TakeAndPushIDsWithRetry(t *testing.T) {
-	set := domain.NewIDSet([]domain.IDRange{
-		domain.NewIDRange(1, defaultTotalSize, false),
-	}, domain.OperationIdCategory, false)
+	set := NewIDSet([]IDRange{
+		NewIDRange(1, defaultTotalSize, false),
+	}, OperationIdCategory, false)
 	idP := provider.NewMockIDProvider()
-	if err := idP.Initialize(set.String(), domain.OperationIdCategory); err != nil {
+	if err := idP.Initialize(set.String(), OperationIdCategory); err != nil {
 		t.Errorf("idProvider.Initialize() error = %v", err)
 		return
 	}
@@ -154,7 +153,7 @@ func Test_idGenerator_TakeAndPushIDsWithRetry(t *testing.T) {
 		g := NewIDGenerator(idP)
 
 		t.Log(" ================================================================================================")
-		stateBefore, err := g.PeekIDs(domain.OperationIdCategory)
+		stateBefore, err := g.PeekIDs(OperationIdCategory)
 		if err != nil {
 			t.Errorf("ERROR: IDGenerator.TakeIDsWithRetry() error = %v", err)
 			return
@@ -162,15 +161,15 @@ func Test_idGenerator_TakeAndPushIDsWithRetry(t *testing.T) {
 		stateBeforeStr := stateBefore.String()
 		t.Log("state before take:", stateBeforeStr)
 
-		wantOut := domain.NewIDSet([]domain.IDRange{
-			domain.NewIDRange(uint64(1+i/2), uint64(DefaultIDSetSize+i/2), false),
-		}, domain.OperationIdCategory, false)
+		wantOut := NewIDSet([]IDRange{
+			NewIDRange(uint64(1+i/2), uint64(DefaultIDSetSize+i/2), false),
+		}, OperationIdCategory, false)
 
-		wantState := domain.NewIDSet([]domain.IDRange{
-			domain.NewIDRange(uint64(DefaultIDSetSize+1+i/2), defaultTotalSize, false),
-		}, domain.OperationIdCategory, false)
+		wantState := NewIDSet([]IDRange{
+			NewIDRange(uint64(DefaultIDSetSize+1+i/2), defaultTotalSize, false),
+		}, OperationIdCategory, false)
 
-		out, err := g.TakeIDsWithRetry(domain.OperationIdCategory)
+		out, err := g.TakeIDsWithRetry(OperationIdCategory)
 		if err != nil {
 			t.Errorf("ERROR: IDGenerator.TakeIDsWithRetry() error = %v", err)
 			return
@@ -184,7 +183,7 @@ func Test_idGenerator_TakeAndPushIDsWithRetry(t *testing.T) {
 			t.Errorf("ERROR: take out =  %v, \n\t\t\t\t\t\t\t want out =\t %v", outStr, wantOutStr)
 			return
 		}
-		stateAfter, err := g.PeekIDs(domain.OperationIdCategory)
+		stateAfter, err := g.PeekIDs(OperationIdCategory)
 		if err != nil {
 			t.Errorf("ERROR: IDGenerator.TakeIDsWithRetry() error = %v", err)
 			return
@@ -197,7 +196,7 @@ func Test_idGenerator_TakeAndPushIDsWithRetry(t *testing.T) {
 		}
 		t.Log("take out:         ", outStr)
 		t.Log("state after take: ", stateAfterStr)
-		stateBefore, err = g.PeekIDs(domain.OperationIdCategory)
+		stateBefore, err = g.PeekIDs(OperationIdCategory)
 		if err != nil {
 			t.Errorf("ERROR: IDGenerator.PeekIDsWithRetry() error = %v", err)
 			return
@@ -217,16 +216,16 @@ func Test_idGenerator_TakeAndPushIDsWithRetry(t *testing.T) {
 		outStr = out.String()
 		t.Log("push back: \t\t", outStr)
 
-		wantState = domain.NewIDSet([]domain.IDRange{
-			domain.NewIDRange(lastID+1, defaultTotalSize, false),
-		}, domain.OperationIdCategory, false)
+		wantState = NewIDSet([]IDRange{
+			NewIDRange(lastID+1, defaultTotalSize, false),
+		}, OperationIdCategory, false)
 
-		_, err = g.PushIDsWithRetry(domain.OperationIdCategory)
+		_, err = g.PushIDsWithRetry(OperationIdCategory)
 		if err != nil {
 			t.Errorf("ERROR: IDGenerator.PushIDsWithRetry() error = %v", err)
 			return
 		}
-		stateAfter, err = g.PeekIDs(domain.OperationIdCategory)
+		stateAfter, err = g.PeekIDs(OperationIdCategory)
 		if err != nil {
 			t.Errorf("ERROR: IDGenerator.PeekIDs() error = %v", err)
 			return

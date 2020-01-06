@@ -1,11 +1,9 @@
-package generator
+package id_generator
 
 import (
+	"errors"
 	"fmt"
-	"git.fxclub.org/wallet/helper/logging"
-	"git.fxclub.org/wallet/id-generator/domain"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
+	"log"
 )
 
 const (
@@ -16,7 +14,7 @@ const (
 
 type IDGenerator struct {
 	idProvider IDProvider
-	idSets     map[string]*domain.IDSet
+	idSets     map[string]*IDSet
 	idReqChan  chan idReq
 }
 
@@ -33,7 +31,7 @@ func NewIDGenerator(provider IDProvider) *IDGenerator {
 
 	gen := &IDGenerator{
 		idProvider: provider,
-		idSets:     make(map[string]*domain.IDSet),
+		idSets:     make(map[string]*IDSet),
 		idReqChan:  make(chan idReq),
 	}
 	go gen.takeIDHandler()
@@ -44,22 +42,22 @@ func NewIDGenerator(provider IDProvider) *IDGenerator {
 func (g *IDGenerator) Initialize(category string, startID uint64) error {
 	set, err := g.PeekIDs(category)
 	if err != nil {
-		logging.Logger.Error(err.Error())
+		log.Println(err.Error())
 	}
 	if set != nil && set.GetSize() != 0 {
-		logging.Logger.Error("set for category already exists")
+		log.Println("set for category already exists")
 		return nil
 	}
-	currIDs := domain.NewIDSet([]domain.IDRange{
-		domain.NewIDRange(startID, defaultTotalSize, false),
+	currIDs := NewIDSet([]IDRange{
+		NewIDRange(startID, defaultTotalSize, false),
 	}, category, false)
 	return g.idProvider.Initialize(currIDs.String(), category)
 }
 
-func (g *IDGenerator) TakeIDsWithRetry(category string) (s *domain.IDSet, rErr error) {
+func (g *IDGenerator) TakeIDsWithRetry(category string) (s *IDSet, rErr error) {
 	currTryCount := 0
 	success := false
-	var takenIDs *domain.IDSet
+	var takenIDs *IDSet
 	var errFin error
 
 	lock, err := g.idProvider.Lock(category)
@@ -71,7 +69,7 @@ func (g *IDGenerator) TakeIDsWithRetry(category string) (s *domain.IDSet, rErr e
 	for !success && currTryCount <= maxTryCount {
 
 		if currTryCount > 1 {
-			logging.Logger.Info(fmt.Sprintf("attempt %d of %d", currTryCount, maxTryCount))
+			log.Println(fmt.Sprintf("attempt %d of %d", currTryCount, maxTryCount))
 		}
 		currTryCount++
 
@@ -88,7 +86,7 @@ func (g *IDGenerator) TakeIDsWithRetry(category string) (s *domain.IDSet, rErr e
 			continue
 		}
 		// deserialize data
-		currIDs, err := domain.IDSetFromString(currData)
+		currIDs, err := IDSetFromString(currData)
 		if err != nil {
 			return nil, err
 		}
@@ -102,16 +100,15 @@ func (g *IDGenerator) TakeIDsWithRetry(category string) (s *domain.IDSet, rErr e
 		setStr := takenIDs.String()
 		size := takenIDs.GetSize()
 		if errFin = g.idProvider.SetData(currIDs.String(), category, version); errFin != nil {
-			logging.Logger.Error("error saving data", zap.Error(errFin))
+			log.Println("error saving data", errFin)
 		} else {
 			success = true
-			logging.Logger.Info("fetched a new ID batch from provider",
-				zap.String("SET", setStr), zap.Uint64("SIZE:", size))
+			log.Println("fetched a new ID batch from provider = ", "SET: ", setStr, "SIZE: ", size)
 		}
 	}
 	if !success {
 		errMsg := "failed to take IDs"
-		logging.Logger.Error(errMsg, zap.Error(errFin))
+		log.Println(errMsg, errFin)
 		return nil, errors.New(fmt.Sprintf(errMsg+": %s", errFin))
 	}
 	g.idSets[category] = takenIDs
@@ -140,7 +137,7 @@ func (g *IDGenerator) PushIDsWithRetry(category string) (v int32, rErr error) {
 
 	for !success && currTryCount <= maxTryCount {
 		if currTryCount > 1 {
-			logging.Logger.Info(fmt.Sprintf("attempt %d of %d", currTryCount, maxTryCount))
+			log.Println(fmt.Sprintf("attempt %d of %d", currTryCount, maxTryCount))
 		}
 		currTryCount++
 
@@ -153,12 +150,12 @@ func (g *IDGenerator) PushIDsWithRetry(category string) (v int32, rErr error) {
 			return ver, errors.New("cannot push IDs, ID set is empty")
 		}
 		version = ver
-		var currIDs *domain.IDSet
+		var currIDs *IDSet
 		if len(currData) == 0 {
 			return -1, errors.New(fmt.Sprintf("no data for category '%s'", category))
 		} else {
 			// deserialize data
-			currIDs, err = domain.IDSetFromString(string(currData))
+			currIDs, err = IDSetFromString(string(currData))
 			if err != nil {
 				return -1, err
 			}
@@ -172,35 +169,34 @@ func (g *IDGenerator) PushIDsWithRetry(category string) (v int32, rErr error) {
 		size := idSet.GetSize()
 		stateStr := currIDs.String()
 		if errFin = g.idProvider.SetData(stateStr, category, version); errFin != nil {
-			logging.Logger.Error("error saving data", zap.Error(errFin))
+			log.Println("error saving data", errFin)
 		} else {
 			success = true
-			logging.Logger.Info("pushed ID set back to provider",
-				zap.String("SET", setStr), zap.Uint64("SIZE:", size), zap.String("STATE", stateStr))
+			log.Println("pushed ID set back to provider = ", "SET: ", setStr, "SIZE: ", size, "STATE: ", stateStr)
 		}
 	}
 	if !success {
 		errMsg := "failed to push IDs"
-		logging.Logger.Error(errMsg, zap.Error(errFin))
+		log.Println(errMsg, errFin)
 		return -1, errors.New(fmt.Sprintf(errMsg+": %s", errFin))
 	}
 	return version, nil
 }
 
 func (g *IDGenerator) Stop() int32 {
-	logging.Logger.Info("pushing back unused IDs ...")
+	log.Println("pushing back unused IDs ...")
 	var version int32
 	var err error
 	for c := range g.idSets {
 		version, err = g.PushIDsWithRetry(c)
 		if err != nil {
-			logging.Logger.Error("error pushing sets", zap.Error(err))
+			log.Println("error pushing sets", err)
 		}
 	}
 	return version
 }
 
-func (g *IDGenerator) PeekIDs(category string) (*domain.IDSet, error) {
+func (g *IDGenerator) PeekIDs(category string) (*IDSet, error) {
 	data, _, err := g.idProvider.GetData(category)
 	if err != nil {
 		return nil, err
@@ -208,7 +204,7 @@ func (g *IDGenerator) PeekIDs(category string) (*domain.IDSet, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
-	currIDs, err := domain.IDSetFromString(string(data))
+	currIDs, err := IDSetFromString(string(data))
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +226,7 @@ func (g *IDGenerator) takeIDHandler() {
 	for {
 		req := <-g.idReqChan
 
-		var set *domain.IDSet
+		var set *IDSet
 		var err error
 		var rsp idResp
 		set, ok := g.idSets[req.category]

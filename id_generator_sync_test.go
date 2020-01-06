@@ -1,11 +1,12 @@
-package generator
+package id_generator
 
 import (
-	"git.fxclub.org/wallet/id-generator/domain"
-	"git.fxclub.org/wallet/id-generator/provider"
+	"github.com/zale144/id-generator/provider"
 	"sync"
 	"testing"
 )
+
+const OperationIdCategory = "example_uid"
 
 func Test_idGenerator_TakeIDMock(t *testing.T) {
 	const take = 1000
@@ -14,7 +15,7 @@ func Test_idGenerator_TakeIDMock(t *testing.T) {
 	// create and initialize id-generator
 	mockIDProvider := provider.NewMockIDProvider()
 	g := NewIDGenerator(mockIDProvider)
-	if err := g.Initialize(domain.OperationIdCategory, 1); err != nil {
+	if err := g.Initialize(OperationIdCategory, 1); err != nil {
 		t.Errorf("IDGenerator.Initialize() error = %v", err)
 		return
 	}
@@ -24,7 +25,7 @@ func Test_idGenerator_TakeIDMock(t *testing.T) {
 		wg.Add(1)
 		go func(gen *IDGenerator) {
 			defer wg.Done()
-			_, err := gen.TakeID(domain.OperationIdCategory)
+			_, err := gen.TakeID(OperationIdCategory)
 			if err != nil {
 				t.Errorf("IDGenerator.TakeID() error = %v", err)
 				return
@@ -34,7 +35,7 @@ func Test_idGenerator_TakeIDMock(t *testing.T) {
 	}
 	wg.Wait()
 	g.Stop()
-	ids, err := g.PeekIDs(domain.OperationIdCategory)
+	ids, err := g.PeekIDs(OperationIdCategory)
 	if err != nil {
 		t.Errorf("IDGenerator.PeekIDs() error = %v", err)
 		return
@@ -56,17 +57,17 @@ func Test_idGenerator_TakeIDZooKeeper(t *testing.T) {
 	}
 	var lastVersion int32
 	defer func() {
-		if err := zookeeperIDProvider.Delete(domain.OperationIdCategory, lastVersion); err != nil {
+		if err := zookeeperIDProvider.Delete(OperationIdCategory, lastVersion); err != nil {
 			t.Errorf("zookeeperIDProvider.Delete error = %v", err)
 			return
 		}
 	}()
 	g := NewIDGenerator(zookeeperIDProvider)
-	if err := g.Initialize(domain.OperationIdCategory, 1); err != nil {
+	if err := g.Initialize(OperationIdCategory, 1); err != nil {
 		t.Errorf("IDGenerator.Initialize() error = %v", err)
 		return
 	}
-	set, err := g.PeekIDs(domain.OperationIdCategory)
+	set, err := g.PeekIDs(OperationIdCategory)
 	if err != nil {
 		t.Errorf("IDGenerator.PeekIDs() error = %v", err)
 		return
@@ -87,7 +88,7 @@ func Test_idGenerator_TakeIDZooKeeper(t *testing.T) {
 			}()
 
 			for j := 0; j < take; j++ {
-				_, err := ig.TakeID(domain.OperationIdCategory)
+				_, err := ig.TakeID(OperationIdCategory)
 				if err != nil {
 					t.Errorf("IDGenerator.TakeID() error = %v", err)
 					return
@@ -98,7 +99,7 @@ func Test_idGenerator_TakeIDZooKeeper(t *testing.T) {
 	}
 	wg.Wait()
 
-	ids, err := g.PeekIDs(domain.OperationIdCategory)
+	ids, err := g.PeekIDs(OperationIdCategory)
 	if err != nil {
 		t.Errorf("IDGenerator.PeekIDs() error = %v", err)
 		return
@@ -119,16 +120,16 @@ func Test_idGenerator_TakeIDRedis(t *testing.T) {
 	// create and initialize id-generator
 	redisIDProvider := provider.NewRedisIDProvider(":6379", "", 0)
 	defer func() {
-		if err := redisIDProvider.Delete(domain.OperationIdCategory, 0); err != nil {
+		if err := redisIDProvider.Delete(OperationIdCategory, 0); err != nil {
 			panic(err)
 		}
 	}()
 	g := NewIDGenerator(redisIDProvider)
-	if err := g.Initialize(domain.OperationIdCategory, 1); err != nil {
+	if err := g.Initialize(OperationIdCategory, 1); err != nil {
 		t.Errorf("IDGenerator.Initialize() error = %v", err)
 		return
 	}
-	set, err := g.PeekIDs(domain.OperationIdCategory)
+	set, err := g.PeekIDs(OperationIdCategory)
 	if err != nil {
 		t.Errorf("IDGenerator.PeekIDs() error = %v", err)
 		return
@@ -146,7 +147,7 @@ func Test_idGenerator_TakeIDRedis(t *testing.T) {
 			ig := NewIDGenerator(rp)
 
 			for j := 0; j < take; j++ {
-				_, err := ig.TakeID(domain.OperationIdCategory)
+				_, err := ig.TakeID(OperationIdCategory)
 				if err != nil {
 					t.Errorf("IDGenerator.TakeID() error = %v", err)
 					return
@@ -157,7 +158,7 @@ func Test_idGenerator_TakeIDRedis(t *testing.T) {
 		}(redisIDProvider, i)
 	}
 	wg.Wait()
-	ids, err := g.PeekIDs(domain.OperationIdCategory)
+	ids, err := g.PeekIDs(OperationIdCategory)
 	if err != nil {
 		t.Errorf("IDGenerator.PeekIDs() error = %v", err)
 		return

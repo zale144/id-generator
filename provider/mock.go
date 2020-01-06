@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 type MockIDProvider struct {

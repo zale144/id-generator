@@ -1,4 +1,4 @@
-package domain
+package id_generator
 
 import (
 	"errors"
